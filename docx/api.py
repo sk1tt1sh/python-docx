@@ -9,6 +9,7 @@ OpcPackage graph.
 from __future__ import absolute_import, division, print_function
 
 import os
+import re
 
 from docx.enum.text import WD_BREAK
 from docx.opc.constants import CONTENT_TYPE as CT, RELATIONSHIP_TYPE as RT
@@ -111,6 +112,42 @@ class Document(object):
             table.style = style
         return table
 
+    def paragraph_search(self, text_value):
+        result = False
+        para_regex = re.compile(text_value)
+        for paragraph in self.paragraphs:
+            if paragraph.text:
+                if para_regex.search(paragraph.text):
+                    result = True
+        return result
+
+    def table_search(self, text_value):
+        result = False
+        tbl_regex = re.compile(text_value)
+        for table in self.tables:
+            for cell in table.cells:
+                for paragraph in cell.paragraphs:
+                    if paragraph.text:
+                        if tbl_regex.search(paragraph.text):
+                            result = True
+        return result
+
+    def paragraph_replace(self, search, replace):
+        searchre = re.compile(search)
+        for paragraph in self.paragraphs:
+            paragraph_text = paragraph.text
+            if paragraph_text:
+                if searchre.search(paragraph_text):
+                    self.clear_paragraph(paragraph)
+                    paragraph.add_run(re.sub(search, replace, paragraph_text))
+        return paragraph
+
+    def clear_paragraph(self, paragraph):
+        p_element = paragraph._p
+        p_child_elements = [elm for elm in p_element.iterchildren()]
+        for child_element in p_child_elements:
+            p_element.remove(child_element)
+
     @property
     def inline_shapes(self):
         """
@@ -184,3 +221,4 @@ class Document(object):
             tmpl = "file '%s' is not a Word file, content type is '%s'"
             raise ValueError(tmpl % (docx, document_part.content_type))
         return document_part, package
+
